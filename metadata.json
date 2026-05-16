@@ -1,0 +1,6 @@
+{
+  "name": "Kingdom Connect",
+  "description": "An AI-powered Community Event & Outreach Management Platform for churches and Christian organizations.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

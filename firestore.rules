@@ -1,0 +1,143 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && (
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true ||
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['visionary', 'admin', 'Visionary', 'Admin']
+        ))
+      );
+    }
+
+    // Validation patterns
+    function isValidUser(data) {
+      return data.keys().hasAll(['userId', 'email']) &&
+             data.userId == request.auth.uid &&
+             data.email is string;
+    }
+
+    function isValidEvent(data) {
+      return data.keys().hasAll(['title', 'category', 'date', 'creatorId']) &&
+             data.title is string && data.title.size() <= 200 &&
+             data.creatorId == request.auth.uid;
+    }
+
+    function isValidRegistration(data) {
+      return data.keys().hasAll(['userId', 'eventId', 'ticketCode']) &&
+             data.userId == request.auth.uid;
+    }
+
+    function isValidStream(data) {
+      return data.keys().hasAll(['title', 'organizationId', 'status']) &&
+             data.title is string &&
+             data.organizationId == request.auth.uid;
+    }
+
+    function isValidChatMessage(data) {
+      return data.keys().hasAll(['streamId', 'userId', 'message', 'timestamp']) &&
+             data.userId == request.auth.uid;
+    }
+
+    // Collection matches
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow create: if isOwner(userId) && isValidUser(incoming());
+      allow update: if isOwner(userId) && (
+        // Allow updating profile fields while ensuring identity remains unchanged if provided
+        (!('userId' in incoming()) || incoming().userId == existing().userId) &&
+        (!('email' in incoming()) || incoming().email == existing().email)
+      ) || isAdmin();
+    }
+
+    match /events/{eventId} {
+      allow read: if true;
+      allow create: if isSignedIn() && isValidEvent(incoming());
+      allow update: if (isSignedIn() && existing().creatorId == request.auth.uid) || isAdmin();
+      allow delete: if isAdmin() || (isSignedIn() && existing().creatorId == request.auth.uid);
+    }
+
+    match /registrations/{registrationId} {
+      allow read: if isSignedIn() && (
+        resource.data.userId == request.auth.uid || 
+        isAdmin() || 
+        (exists(/databases/$(database)/documents/events/$(resource.data.eventId)) && 
+         get(/databases/$(database)/documents/events/$(resource.data.eventId)).data.creatorId == request.auth.uid)
+      );
+      allow create: if isSignedIn() && isValidRegistration(incoming());
+      allow update: if isAdmin() || (
+        exists(/databases/$(database)/documents/events/$(existing().eventId)) && 
+        get(/databases/$(database)/documents/events/$(existing().eventId)).data.creatorId == request.auth.uid
+      );
+      allow delete: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+    }
+
+    match /donations/{donationId} {
+      allow read: if isAdmin() || (isSignedIn() && resource.data.donorId == request.auth.uid);
+      allow create: if isSignedIn() && incoming().donorId == request.auth.uid;
+    }
+
+    match /notifications/{notificationId} {
+      allow read: if isSignedIn() && (resource.data.recipientId == request.auth.uid || isAdmin());
+      allow update: if isOwner(resource.data.recipientId) && incoming().diff(existing()).affectedKeys().hasOnly(['read']);
+      allow create: if isSignedIn(); // Allow creation by system or other users (e.g. mention)
+    }
+
+    match /outreachPlans/{planId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && (
+        isAdmin() || 
+        (exists(/databases/$(database)/documents/events/$(incoming().eventId)) && 
+         get(/databases/$(database)/documents/events/$(incoming().eventId)).data.creatorId == request.auth.uid)
+      );
+    }
+
+    match /admins/{adminId} {
+      allow read: if isSignedIn();
+    }
+
+    match /streams/{streamId} {
+      allow read: if true;
+      allow create: if isSignedIn() && isValidStream(incoming());
+      allow update: if isAdmin() || (isSignedIn() && existing().organizationId == request.auth.uid);
+      allow delete: if isAdmin() || (isSignedIn() && existing().organizationId == request.auth.uid);
+      
+      match /chat/{messageId} {
+        allow read: if true;
+        allow create: if isSignedIn() && isValidChatMessage(incoming());
+        allow delete: if isAdmin() || (isSignedIn() && (
+          resource.data.userId == request.auth.uid || 
+          get(/databases/$(database)/documents/streams/$(streamId)).data.organizationId == request.auth.uid
+        ));
+      }
+    }
+  }
+}

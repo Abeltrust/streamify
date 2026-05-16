@@ -1,0 +1,184 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile information and roles.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "role": { "type": "string" },
+        "churchName": { "type": "string" },
+        "orgEmail": { "type": "string" },
+        "website": { "type": "string" },
+        "cacDocumentUrl": { "type": "string" },
+        "verificationStatus": { "type": "string" },
+        "onboarded": { "type": "boolean" },
+        "isAdmin": { "type": "boolean" },
+        "paymentGateway": {
+          "type": "object",
+          "properties": {
+            "type": { "type": "string" },
+            "apiKey": { "type": "string" }
+          }
+        },
+        "walletBalance": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "email"]
+    },
+    "Event": {
+      "title": "Event",
+      "description": "Church event details.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "category": { "type": "string", "enum": ["Outreach", "Conference", "Prayer Meeting", "Youth Program", "Training", "Crusade"] },
+        "description": { "type": "string" },
+        "date": { "type": "string", "format": "date-time" },
+        "location": { "type": "string" },
+        "venueType": { "type": "string", "enum": ["In-person", "Online", "Hybrid"] },
+        "speaker": { "type": "string" },
+        "creatorId": { "type": "string" },
+        "bannerUrl": { "type": "string" },
+        "status": { "type": "string", "enum": ["Draft", "Published", "Cancelled", "Completed"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "category", "date", "creatorId"]
+    },
+    "Registration": {
+      "title": "Registration",
+      "description": "Attendee registration for events.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "eventId": { "type": "string" },
+        "ticketCode": { "type": "string" },
+        "status": { "type": "string", "enum": ["Registered", "Checked-in", "Cancelled"] },
+        "registrationDate": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "eventId", "ticketCode"]
+    },
+    "Donation": {
+      "title": "Donation",
+      "description": "Donation records.",
+      "type": "object",
+      "properties": {
+        "donorId": { "type": "string" },
+        "amount": { "type": "number" },
+        "currency": { "type": "string" },
+        "targetEventId": { "type": "string" },
+        "isEspees": { "type": "boolean" },
+        "status": { "type": "string" },
+        "donatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["donorId", "amount", "donatedAt"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "App notifications.",
+      "type": "object",
+      "properties": {
+        "recipientId": { "type": "string" },
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "read": { "type": "boolean" },
+        "type": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["recipientId", "title", "message"]
+    },
+    "OutreachPlan": {
+      "title": "Outreach Plan",
+      "description": "AI generated plans for outreaches.",
+      "type": "object",
+      "properties": {
+        "eventId": { "type": "string" },
+        "aiDraft": { "type": "string" },
+        "status": { "type": "string", "enum": ["Draft", "Published"] },
+        "volunteerSlots": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["eventId", "aiDraft"]
+    },
+    "Stream": {
+      "title": "Stream",
+      "description": "Live streaming session details.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "thumbnailUrl": { "type": "string" },
+        "organizationId": { "type": "string" },
+        "status": { "type": "string", "enum": ["scheduled", "live", "ended"] },
+        "viewers": { "type": "number" },
+        "startedAt": { "type": "string", "format": "date-time" },
+        "endedAt": { "type": "string", "format": "date-time" },
+        "currentTranscript": { "type": "string" },
+        "translations": {
+          "type": "object",
+          "properties": {
+            "en": { "type": "string" },
+            "fr": { "type": "string" },
+            "es": { "type": "string" },
+            "pt": { "type": "string" },
+            "zh": { "type": "string" },
+            "hi": { "type": "string" },
+            "ha": { "type": "string" }
+          }
+        },
+        "aiSummary": { "type": "string" }
+      },
+      "required": ["title", "organizationId", "status"]
+    },
+    "ChatMessage": {
+      "title": "Chat Message",
+      "description": "Live chat messages.",
+      "type": "object",
+      "properties": {
+        "streamId": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "message": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["streamId", "userId", "message", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles"
+    },
+    "/events/{eventId}": {
+      "schema": "Event",
+      "description": "Event data"
+    },
+    "/registrations/{registrationId}": {
+      "schema": "Registration",
+      "description": "Event registrations"
+    },
+    "/donations/{donationId}": {
+      "schema": "Donation",
+      "description": "Donation records"
+    },
+    "/notifications/{notificationId}": {
+      "schema": "Notification",
+      "description": "App notifications"
+    },
+    "/outreachPlans/{planId}": {
+      "schema": "OutreachPlan",
+      "description": "Outreach plans"
+    },
+    "/streams/{streamId}": {
+      "schema": "Stream",
+      "description": "Live stream sessions"
+    },
+    "/streams/{streamId}/chat/{messageId}": {
+      "schema": "ChatMessage",
+      "description": "Live chat for a stream"
+    }
+  }
+}
